@@ -1,33 +1,26 @@
 #!/bin/bash -e
-## Build Mixxx
-mkdir -p ${BASE_DIR}/.ccache/
-mkdir -p "${ROOTFS_DIR}/ccache"
-mount --bind ${BASE_DIR}/.ccache  "${ROOTFS_DIR}/ccache"
-on_chroot << EOF
-    git clone --branch 2.5 https://github.com/mixxxdj/mixxx.git /code/
-    cd /code/
-    tools/debian_buildenv.sh setup
-    git rev-parse HEAD > /opt/mixxx.version
-    git describe --tags --always > /opt/mixxx.tag
-    export CCACHE_DIR=/ccache
-    ccache -M 10G
-    export CCACHE_NOCOMPRESS="true"
-    export CTEST_PARALLEL_LEVEL="$(nproc)"
-    export CMAKE_BUILD_PARALLEL_LEVEL="$(nproc)"
-    export PATH="$HOME/.local/bin:$PATH"
-    export GTEST_COLOR="1"
-    export CTEST_OUTPUT_ON_FAILURE="1"
-    export QT_QPA_PLATFORM="offscreen"
-    mkdir -p build && cd build
-    cmake \
-      -DKEYFINDER=ON -DFFMPEG=ON -DMAD=ON -DMODPLUG=ON -DWAVPACK=ON -DBULK=ON \
-      -DCMAKE_INSTALL_PREFIX=/usr/ -S /code -B /code/build
-    cmake --build /code/build --target install
-    ccache -s
-    cpack -G DEB
-EOF
+## Install Zig Toolchain & Build UNX-DJ-ENGINE
 
-unmount "${BASE_DIR}/.ccache"
-mkdir -p "$DEPLOY_DIR"
-cp ${ROOTFS_DIR}/code/build/*.deb "$DEPLOY_DIR/"
-rm -rf ${ROOTFS_DIR}/code/
+on_chroot << EOF
+    # 1. Download and install the Zig compiler for ARM64
+    cd /opt
+    wget https://ziglang.org/download/0.14.0/zig-linux-aarch64-0.14.0.tar.xz
+    tar -xf zig-linux-aarch64-0.14.0.tar.xz
+    mv zig-linux-aarch64-0.14.0 zig
+    rm zig-linux-aarch64-0.14.0.tar.xz
+    
+    # Add Zig to the system PATH
+    echo 'export PATH="/opt/zig:\$PATH"' > /etc/profile.d/zig.sh
+    export PATH="/opt/zig:\$PATH"
+
+    # 2. Clone UNX-DJ-ENGINE
+    git clone https://github.com/rayocta303/UNX-DJ-ENGINE.git /opt/UNX-DJ-ENGINE
+    cd /opt/UNX-DJ-ENGINE
+    
+    # 3. Build the engine specifically for DRM-KMS (Kiosk mode)
+    chmod +x build.sh
+    ./build.sh drm
+    
+    # 4. Make the binary accessible system-wide
+    ln -s /opt/UNX-DJ-ENGINE/unx-dj-engine /usr/local/bin/unx-dj-engine
+EOF
