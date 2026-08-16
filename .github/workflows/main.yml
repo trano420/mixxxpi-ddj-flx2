@@ -29,11 +29,14 @@ jobs:
           chmod +x build.sh build-docker.sh stage*/*.sh stage*/*/*.sh scripts/* 2>/dev/null || true
           touch stage3/EXPORT_IMAGE
 
-          # Define dummy dependencies_check function that always succeeds
+          # Define dummy dependencies_check function for pi-gen
           if [ -f "scripts/dependencies_check" ]; then
             echo -e 'dependencies_check() {\n  return 0\n}' | sudo tee scripts/dependencies_check > /dev/null
             sudo chmod +x scripts/dependencies_check
           fi
+
+          # Remove obsolete bookworm package references
+          find stage2/ -name "00-packages*" -exec sed -i '/rpi-swap/d; /rpi-loop-utils/d; /rpi-usb-gadget/d' {} +
 
           sudo ./build.sh
 
