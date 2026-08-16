@@ -1,5 +1,3 @@
-# This is a basic workflow to help you get started with Actions
-
 name: CI
 
 on:
@@ -8,155 +6,57 @@ on:
   pull_request:
     paths:
       - "**"
-  schedule:
-    - cron: '30 0 * * *'
+  workflow_dispatch:
 
 jobs:
-  # build_self_hosted:
-  #   runs-on: self-hosted
-  #   steps:
-  #   - name: 'Cleanup build folder'
-  #     run: |
-  #       ls -la ./
-  #       sudo rm -rf ./* || true
-  #       sudo rm -rf ./.??* || true
-  #       ls -la ./
-  #   - uses: actions/checkout@v4
-  #   - name: Update apt-get
-  #     run: sudo apt-get update
-  #   - name: Install deps
-  #     run: sudo apt-get -y install coreutils quilt parted kpartx qemu-utils qemu-user debootstrap zerofree zip dosfstools libarchive-tools libcap2-bin grep rsync xz-utils file git curl bc
-  #   - run: mkdir .ccache
-  #   - name: "Set up ccache cache"
-  #     uses: actions/cache@v4
-  #     with:
-  #       path: .ccache
-  #       key: ccache-${{ github.head_ref }}-${{ github.run_number }}
-  #       restore-keys: |
-  #         ccache-${{ github.head_ref }}
-  #         ccache
-  #   - run: ls -lah .ccache
-  #   - name: Build
-  #     run: sudo ./build.sh
-  #   - uses: actions/upload-artifact@v4
-  #     with:
-  #       name: debs
-  #       path: deploy/*.deb
-  #   - uses: actions/upload-artifact@v4
-  #     with:
-  #       name: images
-  #       path: deploy/*.zip
-  #   - uses: actions/upload-artifact@v4
-  #     with:
-  #       name: packages-info
-  #       path: deploy/*.info
-  #   - uses: actions/upload-artifact@v4
-  #     with:
-  #       name: mixxx-version
-  #       path: deploy/*.version
   build:
     runs-on: ubuntu-24.04-arm
     steps:
-    - uses: actions/checkout@v4
-    - name: Update apt-get
-      run: sudo apt-get update
-    - name: Install deps
-      run: sudo apt-get install coreutils quilt parted kpartx qemu-utils qemu-user debootstrap zerofree zip dosfstools libarchive-tools libcap2-bin grep rsync xz-utils file git curl bc
-    - run: mkdir .ccache
-    - name: "Set up ccache cache"
-      uses: actions/cache@v4
-      with:
-        path: .ccache
-        key: ccache-${{ github.head_ref }}-${{ github.run_number }}
-        restore-keys: |
-          ccache-${{ github.head_ref }}
-          ccache
-    - run: ls -lah .ccache
-- name: Build
-      run: |
-        chmod +x build.sh build-docker.sh || true
-        if [ -f "./build.sh" ]; then
-          sudo bash ./build.sh
-        else
-          sudo bash ./build-docker.sh
-        fi
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - uses: actions/upload-artifact@v4
-      with:
-        name: debs-qemu
-        path: deploy/*.deb
-    - uses: actions/upload-artifact@v4
-      with:
-        name: images-qemu
-        path: deploy/*.zip
-    - uses: actions/upload-artifact@v4
-      with:
-        name: packages-info-qemu
-        path: deploy/*.info
-    - uses: actions/upload-artifact@v4
-      with:
-        name: mixxx-version-qemu
-        path: deploy/*.version
-    - uses: actions/upload-artifact@v4
-      with:
-        name: mixxx-tag-qemu
-        path: deploy/*.tag
+      - name: Update package lists
+        run: sudo apt-get update
 
-  release:
-    needs: build
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event_name == 'schedule'
-    permissions:
-      contents: write
-    steps:
-    - uses: actions/checkout@v4
-    - name: Download debs
-      uses: actions/download-artifact@v4
-      with:
-        name: debs-qemu
-        path: debs
-    - name: Download images
-      uses: actions/download-artifact@v4
-      with:
-        name: images-qemu
-        path: images
-    - name: Download packages-info
-      uses: actions/download-artifact@v4
-      with:
-        name: packages-info-qemu
-        path: info
-    - name: Download mixxx-version
-      uses: actions/download-artifact@v4
-      with:
-        name: mixxx-version-qemu
-        path: version
-    - name: Download mixxx-tag
-      uses: actions/download-artifact@v4
-      with:
-        name: mixxx-tag-qemu
-        path: tag
-    - name: Get mixxx version
-      id: mixxx-version
-      run: |
-        echo "COMMIT=$(cat version/*.version)" >> $GITHUB_OUTPUT
-        echo "TAG=$(cat tag/*.tag)" >> $GITHUB_OUTPUT
-    - name: Delete existing nightly release
-      run: |
-        if gh release view nightly --repo $GITHUB_REPOSITORY 2>/dev/null; then
-          gh release delete nightly --repo $GITHUB_REPOSITORY --cleanup-tag --yes
-        fi
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    - name: Upload to Nightly Release
-      uses: ncipollo/release-action@v1
-      with:
-        tag: nightly
-        name: Nightly (Mixxx ${{ steps.mixxx-version.outputs.TAG }})
-        body: |
-          ## Nightly Build
-          - [Mixxx ${{ steps.mixxx-version.outputs.TAG }}](https://github.com/mixxxdj/mixxx/commit/${{ steps.mixxx-version.outputs.COMMIT }})
-        prerelease: true
-        allowUpdates: true
-        immutableCreate: true
-        artifacts: "debs/*,images/*,info/*,version/*"
-        token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install dependencies
+        run: >-
+          sudo apt-get install -y coreutils quilt parted kpartx qemu-utils
+          qemu-user debootstrap zerofree zip dosfstools libarchive-tools
+          libcap2-bin grep rsync xz-utils file git curl bc
+
+      - name: Prepare ccache directory
+        run: mkdir -p .ccache
+
+      - name: Set up ccache cache
+        uses: actions/cache@v4
+        with:
+          path: .ccache
+          key: ccache-${{ github.head_ref }}-${{ github.run_number }}
+          restore-keys: |
+            ccache-${{ github.head_ref }}
+            ccache
+
+      - name: Build image
+        run: |
+          chmod +x build.sh build-docker.sh stage*/*.sh stage*/*/*.sh 2>/dev/null || true
+          if [ -f "./build.sh" ]; then
+            sudo bash ./build.sh
+          else
+            sudo bash ./build-docker.sh
+          fi
+
+      - name: Upload image artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: images-qemu
+          path: deploy/*.zip
+          if-no-files-found: ignore
+
+      - name: Upload deb artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: debs-qemu
+          path: deploy/*.deb
+          if-no-files-found: ignore
