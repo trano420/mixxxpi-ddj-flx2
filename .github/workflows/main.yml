@@ -46,8 +46,9 @@ jobs:
           find stage2/ -name "00-packages*" -exec sed -i '/rpi-swap/d; /rpi-loop-utils/d; /rpi-usb-gadget/d' {} +
           find stage* -type f -name "*.sh" -exec sed -i -E '/rpi-resize/ s/$/ || true/' {} +
           
-          # Safely ignore the missing mixxx.version file in the final export scripts
-          find export-image/ -type f -name "*.sh" -exec sed -i -E '/mixxx\.version/ s/$/ || true/' {} +
+          # Delete any lines in the export scripts looking for Mixxx metadata
+          find export-image/ -type f -name "*.sh" -exec sed -i '/mixxx\.version/d' {} +
+          find export-image/ -type f -name "*.sh" -exec sed -i '/mixxx\.tag/d' {} +
 
           # Run build
           sudo ./build.sh
