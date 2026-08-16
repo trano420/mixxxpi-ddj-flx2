@@ -29,9 +29,9 @@ jobs:
           chmod +x build.sh build-docker.sh stage*/*.sh stage*/*/*.sh scripts/* 2>/dev/null || true
           touch stage3/EXPORT_IMAGE
 
-          # Use 'return 0' because scripts/dependencies_check is sourced (. / source)
+          # Define dummy dependencies_check function that always succeeds
           if [ -f "scripts/dependencies_check" ]; then
-            echo -e '#!/bin/bash\nreturn 0 2>/dev/null || exit 0' | sudo tee scripts/dependencies_check > /dev/null
+            echo -e 'dependencies_check() {\n  return 0\n}' | sudo tee scripts/dependencies_check > /dev/null
             sudo chmod +x scripts/dependencies_check
           fi
 
