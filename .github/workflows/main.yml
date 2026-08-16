@@ -50,6 +50,9 @@ jobs:
           find export-image/ -type f -name "*.sh" -exec sed -i '/mixxx\.version/d' {} +
           find export-image/ -type f -name "*.sh" -exec sed -i '/mixxx\.tag/d' {} +
 
+          # Prevent any dangling mv commands from failing the build after zipping
+          find export-image/ -type f -name "*.sh" -exec sed -i '/mv / s/$/ || true/' {} +
+
           # Run build
           sudo ./build.sh
 
