@@ -21,8 +21,8 @@ jobs:
       - name: Install dependencies & QEMU emulation
         run: >-
           sudo apt-get install -y coreutils quilt parted kpartx qemu-utils
-          qemu-user-static binfmt-support debootstrap zerofree zip dosfstools
-          libarchive-tools libcap2-bin grep rsync xz-utils file git curl bc
+          qemu-user-static qemu-user-binfmt binfmt-support debootstrap zerofree zip
+          dosfstools libarchive-tools libcap2-bin grep rsync xz-utils file git curl bc
 
       - name: Set up QEMU binfmt
         run: sudo update-binfmts --enable qemu-aarch64 || true
