@@ -26,6 +26,10 @@ jobs:
 
       - name: Build image
         run: |
+          # Symlink QEMU binaries to match pi-gen's hardcoded paths
+          sudo ln -sf /usr/bin/qemu-arm-static /usr/bin/qemu-arm 2>/dev/null || true
+          sudo ln -sf /usr/bin/qemu-aarch64-static /usr/bin/qemu-aarch64 2>/dev/null || true
+
           chmod +x build.sh build-docker.sh stage*/*.sh stage*/*/*.sh export-image/*.sh export-image/*/*.sh scripts/* 2>/dev/null || true
           
           # Force pi-gen to export stage3 as the final image
