@@ -38,9 +38,8 @@ jobs:
           # Remove obsolete bookworm package references
           find stage2/ -name "00-packages*" -exec sed -i '/rpi-swap/d; /rpi-loop-utils/d; /rpi-usb-gadget/d' {} +
 
-          # Patch obsolete rpi-resize service enable calls in stage2 run scripts
-          find stage2/ -name "*.sh" -exec sed -i 's/systemctl enable rpi-resize.service/systemctl enable rpi-resize.service || true/g' {} +
-          find stage2/ -name "*.sh" -exec sed -i 's/rpi-resize\.service//g' {} +
+          # Neutralize any rpi-resize invocation across all scripts
+          find stage* -type f -name "*.sh" -exec sed -i -E '/rpi-resize/ s/$/ || true/' {} +
 
           sudo ./build.sh
 
