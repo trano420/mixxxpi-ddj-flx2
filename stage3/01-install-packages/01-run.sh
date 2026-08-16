@@ -17,25 +17,32 @@ on_chroot << 'CHROOT_EOF'
     export PATH="/opt/zig:$PATH"
     echo 'export PATH="/opt/zig:$PATH"' > /etc/profile.d/zig.sh
 
-    # 2. Clone UNX-DJ-ENGINE
+    # 2. Clone UNX-DJ-ENGINE with submodules
     rm -rf /opt/UNX-DJ-ENGINE
-    git clone --branch v0.1.4-Alpha https://github.com/rayocta303/UNX-DJ-ENGINE.git /opt/UNX-DJ-ENGINE
+    git clone --recursive --branch v0.1.4-Alpha https://github.com/rayocta303/UNX-DJ-ENGINE.git /opt/UNX-DJ-ENGINE
     cd /opt/UNX-DJ-ENGINE
 
-    # 3. Patch build.sh to ensure all C++ source files and stdc++ are included in the build
+    # Print files for debugging
+    echo "=== Listing all C++ and C source files in repository ==="
+    find . -type f \( -name "*.cpp" -o -name "*.c" -o -name "*.cc" \)
+
+    # 3. Patch build.sh to include all source files and proper standard C++ linking
     if [ -f "build.sh" ]; then
-        echo "=== Original build.sh contents ==="
+        echo "=== Original build.sh ==="
         cat build.sh
 
-        # If specific cpp files are listed, ensure all src/**/*.cpp files are compiled
-        # Append -lc++ / -lstdc++ and include any missing C++ sources
+        # Ensure all cpp files found in the tree are included in compilation
+        ALL_SRCS=$(find src -type f \( -name "*.cpp" -o -name "*.c" -o -name "*.cc" \) 2>/dev/null | tr '\n' ' ')
+        
+        # Replace narrow file lists or add missing sources and link flags
+        sed -i 's/-lc++/-lc++ -lstdc++/g' build.sh 2>/dev/null || true
         sed -i 's/zig c++/zig c++ -lc++ -lstdc++/g' build.sh 2>/dev/null || true
     fi
 
-    # 4. Run build
+    # 4. Execute build
     chmod +x build.sh
     ./build.sh drm
 
-    # 5. Make the binary accessible system-wide
+    # 5. Link executable
     find . -maxdepth 2 -type f -name "unx-dj-engine*" -exec ln -sf "$(pwd)/{}" /usr/local/bin/unx-dj-engine \;
 CHROOT_EOF
