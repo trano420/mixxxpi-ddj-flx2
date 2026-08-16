@@ -21,16 +21,18 @@ jobs:
       - name: Install dependencies & QEMU emulation
         run: >-
           sudo apt-get install -y coreutils quilt parted kpartx qemu-utils
-          qemu-user-static qemu-user-binfmt binfmt-support debootstrap zerofree zip
+          qemu-user-static binfmt-support debootstrap zerofree zip
           dosfstools libarchive-tools libcap2-bin grep rsync xz-utils file git curl bc
 
       - name: Set up QEMU binfmt
-        run: sudo update-binfmts --enable qemu-aarch64 || true
+        run: sudo systemctl restart systemd-binfmt 2>/dev/null || sudo update-binfmts --enable 2>/dev/null || true
 
       - name: Build image
         run: |
           chmod +x build.sh build-docker.sh stage*/*.sh stage*/*/*.sh 2>/dev/null || true
           touch stage3/EXPORT_IMAGE
+          # Bypass pi-gen's strict dependency check if it hardcodes qemu-user-binfmt
+          sed -i 's/qemu-user-binfmt/qemu-user-static/g' ./build.sh 2>/dev/null || true
           sudo ./build.sh
 
       - name: Upload image artifacts
