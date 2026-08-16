@@ -26,8 +26,11 @@ jobs:
 
       - name: Build image
         run: |
-          chmod +x build.sh build-docker.sh stage*/*.sh stage*/*/*.sh scripts/* 2>/dev/null || true
+          chmod +x build.sh build-docker.sh stage*/*.sh stage*/*/*.sh export-image/*.sh export-image/*/*.sh scripts/* 2>/dev/null || true
+          
+          # Force pi-gen to export stage3 as the final image
           touch stage3/EXPORT_IMAGE
+          rm -f stage0/EXPORT_IMAGE stage1/EXPORT_IMAGE stage2/EXPORT_IMAGE 2>/dev/null || true
 
           # Define dummy dependencies_check function for pi-gen
           if [ -f "scripts/dependencies_check" ]; then
@@ -37,24 +40,23 @@ jobs:
 
           # Remove obsolete bookworm package references
           find stage2/ -name "00-packages*" -exec sed -i '/rpi-swap/d; /rpi-loop-utils/d; /rpi-usb-gadget/d' {} +
-
-          # Neutralize any rpi-resize invocation across all scripts
           find stage* -type f -name "*.sh" -exec sed -i -E '/rpi-resize/ s/$/ || true/' {} +
 
+          # Run build
           sudo ./build.sh
 
       - name: Upload image artifacts
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: images-qemu
+          name: mixxxpi-ddj-flx2-image
           path: deploy/*.zip
           if-no-files-found: warn
 
-      - name: Upload deb artifacts
+      - name: Upload img file if uncompressed
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: debs-qemu
-          path: deploy/*.deb
+          name: mixxxpi-ddj-flx2-raw-img
+          path: deploy/*.img*
           if-no-files-found: ignore
