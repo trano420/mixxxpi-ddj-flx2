@@ -24,18 +24,31 @@ jobs:
           qemu-user-static binfmt-support debootstrap zerofree zip
           dosfstools libarchive-tools libcap2-bin grep rsync xz-utils file git curl bc
 
-      - name: Bypass dependency check & Build image
+      - name: Build image with debug trace
         run: |
+          echo "=== WORKDIR CONTENTS ==="
+          ls -la
+
+          echo "=== CONFIG CONTENTS ==="
+          cat config 2>/dev/null || echo "No config file found"
+
           chmod +x build.sh build-docker.sh stage*/*.sh stage*/*/*.sh scripts/* 2>/dev/null || true
           touch stage3/EXPORT_IMAGE
 
-          # Stub dependencies_check script so it always returns success
+          # Stub dependency check
           if [ -f "scripts/dependencies_check" ]; then
             echo -e '#!/bin/bash\nexit 0' | sudo tee scripts/dependencies_check > /dev/null
             sudo chmod +x scripts/dependencies_check
           fi
 
-          sudo ./build.sh
+          echo "=== RUNNING BUILD.SH WITH TRACE ==="
+          sudo bash -x ./build.sh
+
+          echo "=== CHECKING DEPLOY DIRECTORY ==="
+          ls -la deploy/ 2>/dev/null || echo "deploy/ directory does not exist"
+
+          echo "=== CHECKING WORK DIRECTORY ==="
+          find work/ -maxdepth 3 2>/dev/null || echo "work/ directory does not exist"
 
       - name: Upload image artifacts
         uses: actions/upload-artifact@v4
