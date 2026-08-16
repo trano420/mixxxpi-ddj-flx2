@@ -24,31 +24,18 @@ jobs:
           qemu-user-static binfmt-support debootstrap zerofree zip
           dosfstools libarchive-tools libcap2-bin grep rsync xz-utils file git curl bc
 
-      - name: Build image with debug trace
+      - name: Build image
         run: |
-          echo "=== WORKDIR CONTENTS ==="
-          ls -la
-
-          echo "=== CONFIG CONTENTS ==="
-          cat config 2>/dev/null || echo "No config file found"
-
           chmod +x build.sh build-docker.sh stage*/*.sh stage*/*/*.sh scripts/* 2>/dev/null || true
           touch stage3/EXPORT_IMAGE
 
-          # Stub dependency check
+          # Use 'return 0' because scripts/dependencies_check is sourced (. / source)
           if [ -f "scripts/dependencies_check" ]; then
-            echo -e '#!/bin/bash\nexit 0' | sudo tee scripts/dependencies_check > /dev/null
+            echo -e '#!/bin/bash\nreturn 0 2>/dev/null || exit 0' | sudo tee scripts/dependencies_check > /dev/null
             sudo chmod +x scripts/dependencies_check
           fi
 
-          echo "=== RUNNING BUILD.SH WITH TRACE ==="
-          sudo bash -x ./build.sh
-
-          echo "=== CHECKING DEPLOY DIRECTORY ==="
-          ls -la deploy/ 2>/dev/null || echo "deploy/ directory does not exist"
-
-          echo "=== CHECKING WORK DIRECTORY ==="
-          find work/ -maxdepth 3 2>/dev/null || echo "work/ directory does not exist"
+          sudo ./build.sh
 
       - name: Upload image artifacts
         uses: actions/upload-artifact@v4
