@@ -18,32 +18,20 @@ jobs:
       - name: Update package lists
         run: sudo apt-get update
 
-      - name: Install dependencies
+      - name: Install dependencies & QEMU emulation
         run: >-
           sudo apt-get install -y coreutils quilt parted kpartx qemu-utils
-          qemu-user debootstrap zerofree zip dosfstools libarchive-tools
-          libcap2-bin grep rsync xz-utils file git curl bc
+          qemu-user-static binfmt-support debootstrap zerofree zip dosfstools
+          libarchive-tools libcap2-bin grep rsync xz-utils file git curl bc
 
-      - name: Prepare ccache directory
-        run: mkdir -p .ccache
-
-      - name: Set up ccache cache
-        uses: actions/cache@v4
-        with:
-          path: .ccache
-          key: ccache-${{ github.head_ref }}-${{ github.run_number }}
-          restore-keys: |
-            ccache-${{ github.head_ref }}
-            ccache
+      - name: Set up QEMU binfmt
+        run: sudo update-binfmts --enable qemu-aarch64 || true
 
       - name: Build image
         run: |
           chmod +x build.sh build-docker.sh stage*/*.sh stage*/*/*.sh 2>/dev/null || true
-          if [ -f "./build.sh" ]; then
-            sudo bash ./build.sh
-          else
-            sudo bash ./build-docker.sh
-          fi
+          touch stage3/EXPORT_IMAGE
+          sudo ./build.sh
 
       - name: Upload image artifacts
         uses: actions/upload-artifact@v4
@@ -51,7 +39,7 @@ jobs:
         with:
           name: images-qemu
           path: deploy/*.zip
-          if-no-files-found: ignore
+          if-no-files-found: warn
 
       - name: Upload deb artifacts
         uses: actions/upload-artifact@v4
