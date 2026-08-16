@@ -22,24 +22,20 @@ on_chroot << 'CHROOT_EOF'
     git clone --branch v0.1.4-Alpha https://github.com/rayocta303/UNX-DJ-ENGINE.git /opt/UNX-DJ-ENGINE
     cd /opt/UNX-DJ-ENGINE
 
-    # 3. Patch build configuration to explicitly link standard C++ library (fixing undefined TagParser/std symbols)
-    if [ -f "build.zig" ]; then
-        sed -i 's/b.addExecutable/const exe = b.addExecutable/g' build.zig 2>/dev/null || true
-        sed -i '/linkLibC()/a \    exe.linkLibCpp();' build.zig 2>/dev/null || true
+    # 3. Patch build.sh to ensure all C++ source files and stdc++ are included in the build
+    if [ -f "build.sh" ]; then
+        echo "=== Original build.sh contents ==="
+        cat build.sh
+
+        # If specific cpp files are listed, ensure all src/**/*.cpp files are compiled
+        # Append -lc++ / -lstdc++ and include any missing C++ sources
+        sed -i 's/zig c++/zig c++ -lc++ -lstdc++/g' build.sh 2>/dev/null || true
     fi
 
-    # 4. Build the engine for DRM-KMS Kiosk mode
-    chmod +x build.sh 2>/dev/null || true
-    if [ -f "./build.sh" ]; then
-        ./build.sh drm || zig build -Dtarget=aarch64-linux-gnu -Doptimize=ReleaseFast
-    else
-        zig build -Dtarget=aarch64-linux-gnu -Doptimize=ReleaseFast
-    fi
+    # 4. Run build
+    chmod +x build.sh
+    ./build.sh drm
 
     # 5. Make the binary accessible system-wide
-    if [ -f "zig-out/bin/unx-dj-engine" ]; then
-        ln -sf /opt/UNX-DJ-ENGINE/zig-out/bin/unx-dj-engine /usr/local/bin/unx-dj-engine
-    elif [ -f "unx-dj-engine" ]; then
-        ln -sf /opt/UNX-DJ-ENGINE/unx-dj-engine /usr/local/bin/unx-dj-engine
-    fi
+    find . -maxdepth 2 -type f -name "unx-dj-engine*" -exec ln -sf "$(pwd)/{}" /usr/local/bin/unx-dj-engine \;
 CHROOT_EOF
